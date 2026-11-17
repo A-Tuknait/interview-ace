@@ -2,7 +2,7 @@
 
 Interview Ace is a Windows desktop companion for working through coding questions. It keeps a small overlay beside your editor so you can capture a problem, explore an approach, and review an explanation without losing your place.
 
-> **Work in progress:** The source files are not yet in this repository. Setup and features below describe the prototype and need to be verified against the files before release.
+> **Work in progress:** This is a prototype. Features, installation, and security need further testing before release.
 
 ## What it is intended to do
 
@@ -14,7 +14,7 @@ Interview Ace is a Windows desktop companion for working through coding question
 
 ## Getting started
 
-The prototype uses Windows, Node.js, plain Electron, HTML, and JavaScript. Once the source files have been added, open the project folder in VS Code, open **Terminal → New Terminal**, then run:
+The prototype uses Windows, Node.js, plain Electron, HTML, and JavaScript. Open the project folder in VS Code, open **Terminal → New Terminal**, then run:
 
 ```powershell
 npm.cmd install
@@ -43,4 +43,4 @@ The prototype requests Windows screen-capture protection, but this does not guar
 
 ## Project status
 
-The repository is being prepared. Source files, testing, and a security review are still needed before the project is ready to share or sell.
+The source is available here, but further testing and a security review are needed before the project is ready to share or sell.
