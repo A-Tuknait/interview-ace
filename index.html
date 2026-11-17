@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Set the page title and character encoding. -->
+  <meta charset="UTF-8">
+  <title>Interview Ace</title>
+
+  <style>
+    /* Create the dark, semi-transparent overlay background. */
+    body {
+      margin: 0;
+      background: rgba(18, 18, 24, 0.90);
+      color: #f5f5f7;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+    }
+
+    /* Arrange the interface inside the Electron window. */
+    .window {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 14px;
+      gap: 8px;
+    }
+
+    /* Allow the header to be used to move the window. */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      -webkit-app-region: drag;
+    }
+
+    h1 {
+      flex: 1;
+      margin: 0;
+      font-size: 16px;
+    }
+
+    /* Keep buttons clickable inside draggable areas. */
+    button {
+      -webkit-app-region: no-drag;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    /* Style the settings and stop buttons. */
+    .icon-button {
+      border: 0;
+      background: transparent;
+      padding: 3px 6px;
+      font-size: 19px;
+    }
+
+    .stop-button {
+      border: 1px solid #f07171;
+      border-radius: 6px;
+      background: #9b3038;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .small-button {
+      border: 1px solid #4b4b59;
+      border-radius: 6px;
+      background: #292932;
+      padding: 5px 9px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    /* Place the status badges on one line. */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status,
+    .memory-badge {
+      padding: 5px 9px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .status {
+      background: #26352f;
+      color: #a7e3bd;
+    }
+
+    .status.on {
+      background: #513321;
+      color: #ffc078;
+    }
+
+    .memory-badge {
+      background: #303040;
+      color: #d5d5e7;
+    }
+
+    /* Style the listening control and green audio meter. */
+    .ear-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .meter-track {
+      flex: 1;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 5px;
+      background: #363641;
+    }
+
+    #audio-meter {
+      width: 0%;
+      height: 100%;
+      border-radius: 5px;
+      background: #60d394;
+      transition: width 0.08s linear;
+    }
+
+    .ear-message {
+      color: #c4c4cc;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .ear-message.warning {
+      color: #ffd479;
+    }
+
+    /* Style the collapsible settings panel. */
+    .settings {
+      flex-shrink: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #41414e;
+      border-radius: 8px;
+      background: #1e1e28;
+    }
+
+    .settings[hidden] {
+      display: none;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #d7d7df;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    input,
+    select,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      margin-bottom: 9px;
+      padding: 7px;
+      border: 1px solid #50505e;
+      border-radius: 6px;
+      background: #121219;
+      color: white;
+      font: inherit;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      accent-color: #8bc7a4;
+    }
+
+    textarea {
+      min-height: 55px;
+      resize: vertical;
+    }
+
+    .model-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    #model-message {
+      margin: 0 0 8px;
+      color: #aaaab8;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    /* Style the screenshot area. */
+    .capture-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    #capture-message {
+      margin: 5px 0;
+      color: #c4c4cc;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    #preview {
+      display: block;
+      max-width: 100%;
+      max-height: 100px;
+      border: 1px solid #555563;
+      border-radius: 7px;
+    }
+
+    #preview[hidden] {
+      display: none;
+    }
+
+    /* Pulse the message while Gemini is working. */
+    .analyzing {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      50% {
+        opacity: 0.45;
+      }
+    }
+
+    /* Make long answers scroll inside the window. */
+    #answer {
+      flex: 1;
+      min-height: 40px;
+      max-height: 360px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid #3b3b48;
+      border-radius: 8px;
+      background: #1a1a23;
+      color: #ededf1;
+      font-size: 14px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      scroll-behavior: smooth;
+    }
+
+    /* Style code blocks in AI answers. */
+    #answer pre {
+      overflow-x: auto;
+      padding: 10px;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #0d1117;
+      color: #e6edf3;
+      white-space: pre;
+    }
+
+    #answer code {
+      font-family: Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    .error {
+      color: #ff8585 !important;
+    }
+
+    /* Keep the shortcut list compact. */
+    footer {
+      flex-shrink: 0;
+      padding-top: 7px;
+      border-top: 1px solid #444;
+      color: #bcbcc8;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #60606e transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Hold the complete overlay interface. -->
+  <div class="window">
+    <!-- Show the title, settings button, and Stop button. -->
+    <header>
+      <h1>Interview Ace — Stage 6 Active</h1>
+
+      <button
+        id="settings-toggle"
+        class="icon-button"
+        aria-label="Toggle settings"
+        aria-expanded="false"
+      >⚙</button>
+
+      <button class="stop-button" onclick="window.close()">Stop</button>
+    </header>
+
+    <!-- Show click-through mode and session memory. -->
+    <div class="status-bar">
+      <div id="status" class="status">Click-Through: OFF</div>
+      <div id="memory-badge" class="memory-badge">Memory: 0/4 turns</div>
+    </div>
+
+    <!-- Turn dual-audio listening on and off. -->
+    <div class="ear-bar">
+      <button id="listen-button" class="small-button">
+        🎧 Listen: OFF
+      </button>
+
+      <div class="meter-track" aria-label="Mixed audio level">
+        <div id="audio-meter"></div>
+      </div>
+    </div>
+
+    <div id="ear-message" class="ear-message">Listening is off.</div>
+
+    <!-- Hold the saved Gemini, resume, and readability settings. -->
+    <section id="settings" class="settings" hidden>
+      <label for="api-key">Google Gemini API Key</label>
+      <input
+        id="api-key"
+        type="password"
+        autocomplete="off"
+        placeholder="Paste your Gemini API key"
+      >
+
+      <label for="model">Gemini Model</label>
+      <div class="model-row">
+        <select id="model"></select>
+        <button id="refresh" class="small-button">↻ Refresh</button>
+      </div>
+      <p id="model-message">Enter an API key to load available models.</p>
+
+      <label for="resume">My Resume / Key Projects</label>
+      <textarea
+        id="resume"
+        placeholder="Add your real experience and projects here."
+      ></textarea>
+
+      <label for="font-size">
+        Answer Font Size: <span id="font-size-value">14px</span>
+      </label>
+      <input
+        id="font-size"
+        type="range"
+        min="12"
+        max="18"
+        step="1"
+        value="14"
+      >
+
+      <label for="opacity">
+        Window Opacity: <span id="opacity-value">0.90</span>
+      </label>
+      <input
+        id="opacity"
+        type="range"
+        min="0.65"
+        max="0.98"
+        step="0.01"
+        value="0.90"
+      >
+    </section>
+
+    <!-- Show the latest screenshot and the Clear button. -->
+    <section>
+      <div class="capture-heading">
+        <h2>Captured Screen</h2>
+        <button id="clear" class="small-button">Clear</button>
+      </div>
+
+      <p id="capture-message">
+        Waiting for screenshot (Ctrl+Shift+H)...
+      </p>
+
+      <img id="preview" alt="Captured screen preview" hidden>
+    </section>
+
+    <!-- Display Gemini's answer or an error. -->
+    <div id="answer">Ready — New topic started.</div>
+
+    <!-- Remind you of the available Windows shortcuts. -->
+    <footer>
+      Ctrl+Shift+B: Hide / show &nbsp; • &nbsp;
+      Ctrl+Shift+Arrows: Move &nbsp; • &nbsp;
+      Ctrl+Shift+M: Click-through<br>
+
+      Ctrl+Shift+H: Snap &nbsp; • &nbsp;
+      Ctrl+Shift+A: Answer Voice &nbsp; • &nbsp;
+      Ctrl+Shift+R: Clear &nbsp; • &nbsp;
+      Ctrl+Shift+Q: Quit
+    </footer>
+  </div>
+
+  <script>
+    // Receive messages sent by main.js.
+    const { ipcRenderer } = require("electron");
+
+    // Find the page elements that the app updates.
+    const settings = document.getElementById("settings");
+    const settingsToggle = document.getElementById("settings-toggle");
+    const apiKeyInput = document.getElementById("api-key");
+    const modelSelect = document.getElementById("model");
+    const refreshButton = document.getElementById("refresh");
+    const modelMessage = document.getElementById("model-message");
+    const resumeInput = document.getElementById("resume");
+    const status = document.getElementById("status");
+    const memoryBadge = document.getElementById("memory-badge");
+    const fontSizeSlider = document.getElementById("font-size");
+    const fontSizeValue = document.getElementById("font-size-value");
+    const opacitySlider = document.getElementById("opacity");
+    const opacityValue = document.getElementById("opacity-value");
+    const preview = document.getElementById("preview");
+    const captureMessage = document.getElementById("capture-message");
+    const answer = document.getElementById("answer");
+    const clearButton = document.getElementById("clear");
+    const listenButton = document.getElementById("listen-button");
+    const audioMeter = document.getElementById("audio-meter");
+    const earMessage = document.getElementById("ear-message");
+
+    // Track requests so an older answer cannot replace a newer one.
+    let analysisController = null;
+    let analysisNumber = 0;
+    let modelController = null;
+    let refreshTimer = null;
+
+    // Keep up to four completed turns in memory while the app is open.
+    let conversationHistory = [];
+
+    // Keep only the latest screenshot for future voice follow-ups.
+    let lastScreenshotBase64 = null;
+
+    // Open or close the settings panel.
+    settingsToggle.addEventListener("click", () => {
+      settings.hidden = !settings.hidden;
+
+      settingsToggle.setAttribute(
+        "aria-expanded",
+        String(!settings.hidden)
+      );
+    });
+
+    // localStorage keeps settings between app launches.
+    apiKeyInput.value = localStorage.getItem("geminiApiKey") || "";
+    resumeInput.value = localStorage.getItem("resume") || "";
+
+    let savedModel =
+      localStorage.getItem("geminiModel") || "gemini-3.8-flash";
+
+    // Show the saved model while the live list is loading.
+    modelSelect.add(new Option(savedModel, savedModel));
+
+    // Save the key and refresh the model list after typing stops.
+    apiKeyInput.addEventListener("input", () => {
+      localStorage.setItem("geminiApiKey", apiKeyInput.value.trim());
+
+      clearTimeout(refreshTimer);
+
+      if (modelController) {
+        modelController.abort();
+      }
+
+      if (!apiKeyInput.value.trim()) {
+        modelMessage.textContent =
+          "Enter an API key to load available models.";
+        modelMessage.classList.remove("error");
+        return;
+      }
+
+      modelMessage.textContent = "Waiting to refresh models...";
+      refreshTimer = setTimeout(refreshModels, 800);
+    });
+
+    // Save the chosen model and resume when they change.
+    modelSelect.addEventListener("change", () => {
+      savedModel = modelSelect.value;
+      localStorage.setItem("geminiModel", savedModel);
+    });
+
+    resumeInput.addEventListener("input", () => {
+      localStorage.setItem("resume", resumeInput.value);
+    });
+
+    // Load the saved answer font size and background opacity.
+    fontSizeSlider.value =
+      localStorage.getItem("answerFontSize") || "14";
+
+    opacitySlider.value =
+      localStorage.getItem("windowOpacity") || "0.90";
+
+    // Apply and save the answer font size.
+    function updateFontSize() {
+      const size = fontSizeSlider.value;
+
+      answer.style.fontSize = `${size}px`;
+      fontSizeValue.textContent = `${size}px`;
+      localStorage.setItem("answerFontSize", size);
+    }
+
+    // Apply and save the overlay background opacity.
+    function updateOpacity() {
+      const opacity = Number(opacitySlider.value);
+
+      document.body.style.background =
+        `rgba(18, 18, 24, ${opacity})`;
+
+      opacityValue.textContent = opacity.toFixed(2);
+      localStorage.setItem("windowOpacity", String(opacity));
+    }
+
+    fontSizeSlider.addEventListener("input", updateFontSize);
+    opacitySlider.addEventListener("input", updateOpacity);
+
+    updateFontSize();
+    updateOpacity();
+
+    // Read Google's response and preserve its error message.
+    async function readResponse(response) {
+      const text = await response.text();
+      let data;
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        if (!response.ok) {
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+
+        throw new Error("Google returned an unreadable response.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status}`);
+      }
+
+      return data;
+    }
+
+    // Fetch the live list of Gemini models supporting generateContent.
+    async function refreshModels() {
+      const key = apiKeyInput.value.trim();
+
+      if (!key) {
+        modelMessage.textContent = "Please enter your Gemini API key.";
+        modelMessage.classList.add("error");
+        return;
+      }
+
+      if (modelController) {
+        modelController.abort();
+      }
+
+      const controller = new AbortController();
+      modelController = controller;
+
+      modelMessage.classList.remove("error");
+      modelMessage.textContent = "Loading models...";
+
+      try {
+        let pageToken = "";
+        let models = [];
+
+        // Read every page of Google's model list.
+        do {
+          const url = new URL(
+            "https://generativelanguage.googleapis.com/v1beta/models"
+          );
+
+          url.searchParams.set("key", key);
+          url.searchParams.set("pageSize", "100");
+
+          if (pageToken) {
+            url.searchParams.set("pageToken", pageToken);
+          }
+
+          const response = await fetch(url, {
+            signal: controller.signal
+          });
+
+          const data = await readResponse(response);
+
+          models.push(...(data.models || []));
+          pageToken = data.nextPageToken || "";
+        } while (pageToken);
+
+        // Filter the list and sort model names by version number.
+        const names = [...new Set(
+          models
+            .filter(model =>
+              model.name &&
+              model.name.toLowerCase().includes("gemini") &&
+              (model.supportedGenerationMethods || [])
+                .includes("generateContent")
+            )
+            .map(model => model.name.replace(/^models\//, ""))
+        )].sort((a, b) =>
+          b.localeCompare(a, undefined, { numeric: true })
+        );
+
+        if (!names.length) {
+          throw new Error(
+            "No Gemini models supporting generateContent were found."
+          );
+        }
+
+        modelSelect.replaceChildren();
+
+        names.forEach(name => {
+          modelSelect.add(new Option(name, name));
+        });
+
+        // Keep the saved model when it is still available.
+        modelSelect.value = names.includes(savedModel)
+          ? savedModel
+          : names[0];
+
+        savedModel = modelSelect.value;
+        localStorage.setItem("geminiModel", savedModel);
+
+        modelMessage.textContent = `${names.length} models available.`;
+      } catch (error) {
+        if (error.name === "AbortError") return;
+
+        modelMessage.textContent = error.message;
+        modelMessage.classList.add("error");
+      } finally {
+        if (modelController === controller) {
+          modelController = null;
+        }
+      }
+    }
+
+    // Refresh models when clicked or when a saved key exists.
+    refreshButton.addEventListener("click", () => {
+      clearTimeout(refreshTimer);
+      refreshModels();
+    });
+
+    if (apiKeyInput.value.trim()) {
+      refreshModels();
+    }
+
+    // Update the click-through badge when main.js reports a change.
+    ipcRenderer.on("click-through-status", (event, isClickThrough) => {
+      status.textContent =
+        `Click-Through: ${isClickThrough ? "ON" : "OFF"}`;
+
+      status.classList.toggle("on", isClickThrough);
+    });
+
+    // Update the memory badge after turns are added or cleared.
+    function updateMemoryBadge() {
+      const turns = conversationHistory.length / 2;
+      memoryBadge.textContent = `Memory: ${turns}/4 turns`;
+    }
+
+    // Store one successful user-and-model turn as text only.
+    function rememberTurn(userText, modelText) {
+      conversationHistory.push(
+        {
+          role: "user",
+          parts: [{ text: userText }]
+        },
+        {
+          role: "model",
+          parts: [{ text: modelText }]
+        }
+      );
+
+      // Each turn has two messages. Remove the oldest complete turn
+      // whenever more than four turns are stored.
+      while (conversationHistory.length > 8) {
+        conversationHistory.splice(0, 2);
+      }
+
+      updateMemoryBadge();
+    }
+
+    // Escape AI text so it is displayed rather than executed as HTML.
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[character]);
+    }
+
+    // Format basic bold text, bullets, headings, and code blocks.
+    function renderAnswer(text) {
+      const pieces = text.split(/```/);
+
+      answer.innerHTML = pieces.map((piece, index) => {
+        if (index % 2 === 1) {
+          const code = piece.replace(/^[^\n]*\n/, "");
+          return `<pre><code>${escapeHtml(code)}</code></pre>`;
+        }
+
+        return escapeHtml(piece)
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/^#{1,6}\s+(.+)$/gm, "<strong>$1</strong>")
+          .replace(/^\s*[-*]\s+/gm, "• ")
+          .replace(/\n/g, "<br>");
+      }).join("");
+    }
+
+    // Start a new analysis and cancel any earlier request.
+    function beginAnalysis(message) {
+      if (analysisController) {
+        analysisController.abort();
+      }
+
+      const requestNumber = ++analysisNumber;
+      const controller = new AbortController();
+      analysisController = controller;
+
+      answer.classList.remove("error");
+      answer.textContent = "";
+      captureMessage.textContent = message;
+      captureMessage.classList.add("analyzing");
+
+      return { requestNumber, controller };
+    }
+
+    // Send the current media and recent text history to Gemini.
+    async function sendToGemini(
+      prompt,
+      mimeType,
+      base64,
+      controller,
+      requestNumber
+    ) {
+      const key = apiKeyInput.value.trim();
+      const model = modelSelect.value;
+
+      if (!key) {
+        throw new Error("Please enter your Gemini API key in Settings.");
+      }
+
+      // Ask Gemini to treat the next item as a follow-up when history exists.
+      const followUpRule = conversationHistory.length
+        ? "\n\nIf prior turns exist in conversation history, treat the new screenshot or audio as a direct follow-up—do not repeat earlier explanations from scratch; jump straight to the fix, optimization, or next step."
+        : "";
+
+      const userText = prompt + followUpRule;
+      const currentParts = [{ text: userText }];
+
+      // Attach only the latest screenshot to a voice follow-up.
+      if (mimeType === "audio/wav" && lastScreenshotBase64) {
+        currentParts.push({
+          text: "This is the most recent screenshot for visual context."
+        });
+
+        currentParts.push({
+          inline_data: {
+            mime_type: "image/png",
+            data: lastScreenshotBase64
+          }
+        });
+      }
+
+      // Attach the current screenshot or audio clip.
+      currentParts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: base64
+        }
+      });
+
+      // Gemini receives earlier text turns first, followed by the
+      // current user message. Old image and audio data are not stored
+      // in conversationHistory.
+      const contents = [
+        ...conversationHistory,
+        {
+          role: "user",
+          parts: currentParts
+        }
+      ];
+
+      const url = new URL(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
+      );
+
+      url.searchParams.set("key", key);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        signal: controller.signal,
+        body: JSON.stringify({ contents })
+      });
+
+      const data = await readResponse(response);
+
+      // Gemini returns answer text inside candidates, content, and parts.
+      const parts = data.candidates?.[0]?.content?.parts || [];
+
+      const result = parts
+        .filter(part => typeof part.text === "string")
+        .map(part => part.text)
+        .join("\n");
+
+      if (!result.trim()) {
+        const reason = data.promptFeedback?.blockReason
+          || data.candidates?.[0]?.finishReason
+          || "No text was returned.";
+
+        throw new Error(`Gemini returned no answer: ${reason}`);
+      }
+
+      // Save only successful results that were not cleared or replaced.
+      if (requestNumber === analysisNumber) {
+        rememberTurn(userText, result);
+      }
+
+      return result;
+    }
+
+    // Analyze a screenshot sent by main.js.
+    async function analyzeScreen(dataUrl) {
+      preview.src = dataUrl;
+      preview.hidden = false;
+
+      const { requestNumber, controller } =
+        beginAnalysis("Analyzing screen...");
+
+      let timedOut = false;
+
+      // Stop waiting after 90 seconds if the request gets stuck.
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 90000);
+
+      try {
+        // Remove the PNG prefix to get the raw base64 image.
+        const prefix = "data:image/png;base64,";
+
+        if (!dataUrl.startsWith(prefix)) {
+          throw new Error("The captured image is not a PNG data URL.");
+        }
+
+        const imageBase64 = dataUrl.slice(prefix.length);
+
+        // Replace the previous screenshot with this newer one.
+        lastScreenshotBase64 = imageBase64;
+
+        const prompt = `You are an expert technical interview copilot. Analyze the user's screen and adapt automatically:
+
+- If it shows a CODING / ALGORITHM problem: Output (1) **Say First:** 2 crisp sentences explaining the intuition in plain English, (2) **Complexity:** Time & Space Big-O, (3) **Solution:** Clean, well-commented code (match the language shown in the editor, or default to Python), and (4) **Edge Cases:** 2 brief edge cases to mention.
+- If it shows a BUG, ERROR, or FAILING TEST: Identify the exact broken line, explain why it fails in 1 sentence, and show the corrected code snippet.
+- If it shows a SYSTEM DESIGN or TECHNICAL QUESTION: Give concise bullet points covering architecture, trade-offs, and bottlenecks.
+Keep answers scannable, concise, and easy to glance at under a webcam—avoid long walls of text.
+
+The user's resume / key projects follow. Use them only when relevant and do not invent experience:
+${resumeInput.value.trim() || "No resume provided."}`;
+
+        const result = await sendToGemini(
+          prompt,
+          "image/png",
+          imageBase64,
+          controller,
+          requestNumber
+        );
+
+        if (requestNumber !== analysisNumber) return;
+
+        renderAnswer(result);
+        answer.scrollTop = 0;
+
+        const time = new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit"
+        });
+
+        captureMessage.textContent =
+          `Screen captured at ${time} — Analysis complete`;
+      } catch (error) {
+        if (requestNumber !== analysisNumber) return;
+        if (error.name === "AbortError" && !timedOut) return;
+
+        answer.classList.add("error");
+        answer.textContent = timedOut
+          ? "The request timed out after 90 seconds. Check your connection or try another model."
+          : error.message;
+
+        captureMessage.textContent = "Analysis failed.";
+      } finally {
+        clearTimeout(timeout);
+
+        if (requestNumber === analysisNumber) {
+          captureMessage.classList.remove("analyzing");
+
+          if (analysisController === controller) {
+            analysisController = null;
+          }
+        }
+      }
+    }
+
+    // Start analysis when main.js sends a screenshot.
+    ipcRenderer.on("screenshot-captured", (event, dataUrl) => {
+      analyzeScreen(dataUrl);
+    });
+
+    // Display screen-capture errors reported by main.js.
+    ipcRenderer.on("capture-error", (event, message) => {
+      captureMessage.textContent = "Capture failed.";
+      answer.classList.add("error");
+      answer.textContent = message || "Could not capture the screen.";
+    });
+
+    // Clear the current topic and its temporary memory.
+    function clearScreen() {
+      analysisNumber++;
+
+      if (analysisController) {
+        analysisController.abort();
+      }
+
+      analysisController = null;
+      conversationHistory = [];
+      lastScreenshotBase64 = null;
+      updateMemoryBadge();
+
+      preview.hidden = true;
+      preview.removeAttribute("src");
+
+      captureMessage.classList.remove("analyzing");
+      captureMessage.textContent =
+        "Waiting for screenshot (Ctrl+Shift+H)...";
+
+      answer.classList.remove("error");
+      answer.textContent = "Ready — New topic started.";
+    }
+
+    // Clear using the button or the global shortcut.
+    ipcRenderer.on("clear-screen", clearScreen);
+    clearButton.addEventListener("click", clearScreen);
+
+    // Hold up to 25 seconds of mixed 16 kHz mono audio.
+    const audioRate = 16000;
+    const audioBuffer = new Float32Array(audioRate * 25);
+
+    let audioWritePosition = 0;
+    let audioSampleCount = 0;
+
+    // Keep references so both audio sources can be stopped.
+    let listening = false;
+    let startingListening = false;
+    let sysStream = null;
+    let micStream = null;
+    let audioContext = null;
+    let sysSource = null;
+    let micSource = null;
+    let sysGain = null;
+    let micGain = null;
+    let analyser = null;
+    let audioProcessor = null;
+    let silentOutput = null;
+
+    // Display a listening message, optionally in yellow.
+    function showEarMessage(message, warning = false) {
+      earMessage.textContent = message;
+      earMessage.classList.toggle("warning", warning);
+    }
+
+    // Stop both streams and release audio resources.
+    async function stopListening() {
+      listening = false;
+      listenButton.textContent = "🎧 Listen: OFF";
+      audioMeter.style.width = "0%";
+
+      if (audioProcessor) {
+        audioProcessor.onaudioprocess = null;
+        audioProcessor.disconnect();
+      }
+
+      if (sysSource) sysSource.disconnect();
+      if (micSource) micSource.disconnect();
+      if (sysGain) sysGain.disconnect();
+      if (micGain) micGain.disconnect();
+      if (analyser) analyser.disconnect();
+      if (silentOutput) silentOutput.disconnect();
+
+      if (sysStream) {
+        sysStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (audioContext && audioContext.state !== "closed") {
+        await audioContext.close();
+      }
+
+      sysStream = null;
+      micStream = null;
+      audioContext = null;
+      sysSource = null;
+      micSource = null;
+      sysGain = null;
+      micGain = null;
+      analyser = null;
+      audioProcessor = null;
+      silentOutput = null;
+
+      // Erase the audio buffer when listening is turned off.
+      audioBuffer.fill(0);
+      audioWritePosition = 0;
+      audioSampleCount = 0;
+    }
+
+    // Start Windows system audio and microphone capture.
+    async function startListening() {
+      if (startingListening || listening) return;
+
+      startingListening = true;
+      listenButton.disabled = true;
+      showEarMessage("Starting system audio and microphone...");
+
+      try {
+        // Request Windows system audio and stop the video track.
+        sysStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+
+        sysStream.getVideoTracks().forEach(track => track.stop());
+
+        const sysTrack = sysStream.getAudioTracks()[0];
+
+        if (!sysTrack) {
+          throw new Error("Windows did not provide system audio.");
+        }
+
+        // Request access to the microphone.
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false
+        });
+
+        const micTrack = micStream.getAudioTracks()[0];
+
+        if (!micTrack) {
+          throw new Error("No microphone audio track was provided.");
+        }
+
+        // Ask the browser to resample both sources to 16 kHz.
+        audioContext = new AudioContext({
+          sampleRate: audioRate
+        });
+
+        if (audioContext.sampleRate !== audioRate) {
+          throw new Error(
+            `Expected 16000 Hz audio, but received ${audioContext.sampleRate} Hz.`
+          );
+        }
+
+        audioBuffer.fill(0);
+        audioWritePosition = 0;
+        audioSampleCount = 0;
+
+        // Create separate inputs for system audio and microphone audio.
+        sysSource = audioContext.createMediaStreamSource(
+          new MediaStream([sysTrack])
+        );
+
+        micSource = audioContext.createMediaStreamSource(
+          new MediaStream([micTrack])
+        );
+
+        // Lower both input levels before combining them.
+        sysGain = audioContext.createGain();
+        micGain = audioContext.createGain();
+
+        sysGain.gain.value = 0.5;
+        micGain.gain.value = 0.5;
+
+        // Mix both sources into one mono signal.
+        analyser = audioContext.createAnalyser();
+        analyser.channelCount = 1;
+        analyser.channelCountMode = "explicit";
+        analyser.channelInterpretation = "speakers";
+
+        sysSource.connect(sysGain);
+        micSource.connect(micGain);
+        sysGain.connect(analyser);
+        micGain.connect(analyser);
+
+        // Process the mixed audio and keep the output silent.
+        audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        silentOutput = audioContext.createGain();
+        silentOutput.gain.value = 0;
+
+        analyser.connect(audioProcessor);
+        audioProcessor.connect(silentOutput);
+        silentOutput.connect(audioContext.destination);
+
+        // Add incoming samples to the 25-second circular buffer.
+        audioProcessor.onaudioprocess = event => {
+          const samples = event.inputBuffer.getChannelData(0);
+          let total = 0;
+
+          for (let i = 0; i < samples.length; i++) {
+            const sample = samples[i];
+
+            // Once full, the buffer replaces its oldest samples.
+            audioBuffer[audioWritePosition] = sample;
+
+            audioWritePosition =
+              (audioWritePosition + 1) % audioBuffer.length;
+
+            audioSampleCount = Math.min(
+              audioSampleCount + 1,
+              audioBuffer.length
+            );
+
+            total += sample * sample;
+          }
+
+          // Move the green meter based on the mixed audio level.
+          const level = Math.sqrt(total / samples.length);
+
+          audioMeter.style.width =
+            `${Math.min(100, level * 500)}%`;
+        };
+
+        await audioContext.resume();
+
+        // Stop both sources if either required audio track ends.
+        const handleEnded = () => {
+          if (!listening) return;
+
+          stopListening().then(() => {
+            showEarMessage(
+              "An audio source stopped. Turn Listen on again.",
+              true
+            );
+          });
+        };
+
+        sysTrack.addEventListener("ended", handleEnded);
+        micTrack.addEventListener("ended", handleEnded);
+
+        listening = true;
+        listenButton.textContent = "🎧 Listen: ON";
+
+        showEarMessage(
+          "Listening to system audio and microphone."
+        );
+      } catch (error) {
+        await stopListening();
+
+        showEarMessage(
+          `Could not start listening: ${error.message}`,
+          true
+        );
+      } finally {
+        startingListening = false;
+        listenButton.disabled = false;
+      }
+    }
+
+    // Toggle listening with the Ear button.
+    listenButton.addEventListener("click", async () => {
+      if (listening) {
+        await stopListening();
+        showEarMessage("Listening is off.");
+      } else {
+        await startListening();
+      }
+    });
+
+    // Copy buffered samples from oldest to newest.
+    function getBufferedAudio() {
+      const samples = new Float32Array(audioSampleCount);
+
+      const start = audioSampleCount === audioBuffer.length
+        ? audioWritePosition
+        : 0;
+
+      for (let i = 0; i < audioSampleCount; i++) {
+        samples[i] =
+          audioBuffer[(start + i) % audioBuffer.length];
+      }
+
+      return samples;
+    }
+
+    // Encode mixed audio as a standard 16-bit PCM WAV file.
+    function encodeWav(samples) {
+      const dataSize = samples.length * 2;
+      const wav = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(wav);
+
+      // Write text markers into the WAV header.
+      function writeText(offset, text) {
+        for (let i = 0; i < text.length; i++) {
+          view.setUint8(offset + i, text.charCodeAt(i));
+        }
+      }
+
+      // Write the standard 44-byte header for 16 kHz mono audio.
+      writeText(0, "RIFF");
+      view.setUint32(4, 36 + dataSize, true);
+      writeText(8, "WAVE");
+      writeText(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, audioRate, true);
+      view.setUint32(28, audioRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeText(36, "data");
+      view.setUint32(40, dataSize, true);
+
+      // Convert floating-point samples into signed 16-bit samples.
+      for (let i = 0; i < samples.length; i++) {
+        const sample = Math.max(-1, Math.min(1, samples[i]));
+
+        const value = sample < 0
+          ? sample * 32768
+          : sample * 32767;
+
+        view.setInt16(44 + i * 2, value, true);
+      }
+
+      return new Blob([wav], {
+        type: "audio/wav"
+      });
+    }
+
+    // Convert the WAV file to base64 for Gemini.
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const dataUrl = String(reader.result);
+          resolve(dataUrl.split(",")[1]);
+        };
+
+        reader.onerror = () => {
+          reject(new Error("Could not read the audio."));
+        };
+
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Send the latest mixed conversation audio to Gemini.
+    async function answerAudio() {
+      if (!listening) {
+        showEarMessage(
+          "Click 🎧 Listen: ON first so I can hear the conversation.",
+          true
+        );
+        return;
+      }
+
+      if (!audioSampleCount) {
+        showEarMessage(
+          "Wait a moment for audio to be collected.",
+          true
+        );
+        return;
+      }
+
+      const { requestNumber, controller } =
+        beginAnalysis("Listening to conversation & thinking...");
+
+      showEarMessage("Sending the latest mixed audio to Gemini...");
+
+      let timedOut = false;
+
+      // Stop waiting after 90 seconds if the request gets stuck.
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 90000);
+
+      try {
+        // Convert the buffered samples to WAV and then base64.
+        const wav = encodeWav(getBufferedAudio());
+        const audioBase64 = await blobToBase64(wav);
+
+        // Do not send if Clear or a newer request cancelled this one.
+        if (requestNumber !== analysisNumber) return;
+
+        const prompt = `This 25-second audio clip contains a live technical interview conversation (both the interviewer's voice and my own voice). They may speak in English, Hindi, or Hinglish. Understand what the interviewer asked and what I have already said (if anything), write **Heard:** as a 1-line summary of the question/context, and ALWAYS write your entire response in natural, conversational Hinglish written STRICTLY in the English (Latin) alphabet—NEVER use Devanagari/Hindi script. Keep all technical, algorithmic, and system design terms in English (e.g., Hash Map, Time Complexity, Load Balancer, Trade-offs) so it sounds like a real Indian software engineer speaking naturally on a call:
+- For TECHNICAL / FOLLOW-UP questions: Give (1) **Say First:** 2 sentences of clear intuition in Hinglish to continue smoothly from what was just said, and (2) **Key Points:** 3–4 crisp Hinglish bullet points covering complexity, implementation, or trade-offs.
+- For BEHAVIORAL questions: Frame a concise **STAR** story (Situation, Task, Action, Result) in natural Hinglish using my saved Resume/Projects.
+Keep it scannable and concise so I can glance at it naturally on a video call.
+
+My Resume / Key Projects:
+${resumeInput.value.trim() || "No resume provided."}
+
+Do not invent experience or details not present in my resume.`;
+
+        const result = await sendToGemini(
+          prompt,
+          "audio/wav",
+          audioBase64,
+          controller,
+          requestNumber
+        );
+
+        if (requestNumber !== analysisNumber) return;
+
+        renderAnswer(result);
+        answer.scrollTop = 0;
+        captureMessage.textContent = "Voice analysis complete.";
+
+        showEarMessage(
+          listening
+            ? "Listening to system audio and microphone."
+            : "Listening is off."
+        );
+      } catch (error) {
+        if (requestNumber !== analysisNumber) return;
+        if (error.name === "AbortError" && !timedOut) return;
+
+        answer.classList.add("error");
+        answer.textContent = timedOut
+          ? "The request timed out after 90 seconds. Check your connection or try another model."
+          : error.message;
+
+        captureMessage.textContent = "Voice analysis failed.";
+
+        showEarMessage(
+          listening
+            ? "Listening to system audio and microphone."
+            : "Listening is off."
+        );
+      } finally {
+        clearTimeout(timeout);
+
+        if (requestNumber === analysisNumber) {
+          captureMessage.classList.remove("analyzing");
+
+          if (analysisController === controller) {
+            analysisController = null;
+          }
+        }
+      }
+    }
+
+    // Answer the buffered conversation on Ctrl+Shift+A.
+    ipcRenderer.on("answer-audio", answerAudio);
+
+    // Stop both audio streams when the window closes.
+    window.addEventListener("beforeunload", () => {
+      if (sysStream) {
+        sysStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+    });
+  </script>
+</body>
+</html>
