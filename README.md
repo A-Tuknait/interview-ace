@@ -2,8 +2,6 @@
 
 Interview Ace is a Windows desktop companion for working through coding questions. It keeps a small overlay beside your editor so you can capture a problem, explore an approach, and review an explanation without losing your place.
 
-> **Work in progress:** This is a prototype. Features, installation, and security need further testing before release.
-
 ## What it is intended to do
 
 - Capture your primary screen and ask Gemini to help explain coding questions, errors, or technical concepts.
